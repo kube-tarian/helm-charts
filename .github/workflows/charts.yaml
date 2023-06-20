@@ -1,0 +1,144 @@
+name: charts
+
+on:
+  push:
+    paths:
+      - charts/**
+      - .github/**
+      - test/**
+  pull_request:
+    paths:
+      - charts/**
+      - .github/**
+      - test/**
+
+permissions: read-all
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    env:
+      GOPATH: ${{ github.workspace }}/../go
+      HOME: ${{ github.workspace }}/..
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # @3.1.0
+        with:
+          submodules: 'recursive'
+      - uses: actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f # @3.3.1
+        with:
+          go-version: '1.19'
+
+      - name: Install Helm
+        uses: azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # @v3.5
+        with:
+          version: '3.11.0'
+
+      # prepare for build
+      - run: sudo apt update && sudo apt install -y jq
+
+      # Python is required because `ct lint` runs Yamale (https://github.com/23andMe/Yamale) and
+      # yamllint (https://github.com/adrienverge/yamllint) which require Python
+      - name: Set up Python
+        uses: actions/setup-python@13ae5bb136fac2878aff31522b9efb785519f984 # @v4.3.0
+        with:
+          python-version: 3.9
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@afea100a513515fbd68b0e72a7bb0ae34cb62aec # @v2.3.1
+
+      # Commented out due to a fatal error in the env setup (probably in GitHub action)
+      # - name: Run chart-testing (lint)
+      #  run: ct lint
+
+      - name: Create kind cluster
+        uses: helm/kind-action@d8ccf8fb623ce1bb360ae2f45f323d9d5c5e9f00 # @1.5.0
+        with:
+          config: 'test/k8s/cluster-config.yaml'
+          kubectl_version: 'v1.25.5'
+
+      - name: Create namespace
+        run: | 
+          kubectl create namespace tarian-system
+
+      - name: Install dgraph
+        run: |
+          kubectl apply -f ./test/k8s/dgraph-single.yaml -n tarian-system
+
+      - name: Install NATS
+        run: |
+          helm repo add nats https://nats-io.github.io/k8s/helm/charts/
+          helm upgrade -i nats nats/nats -n tarian-system -f ./test/k8s/nats-helm-values.yaml
+
+      - name: Install charts
+        run: |
+          APP_VERSION_TAG=$(helm show chart ./charts/tarian-server | grep appVersion | cut -d':' -f2 | tr -d ' "')
+          echo $APP_VERSION_TAG
+
+          set +e
+
+          IMAGE_EXIST=$(sudo docker manifest inspect ghcr.io/kube-tarian/tarian-server:$APP_VERSION_TAG > /dev/null 2>&1)$?
+          if [ $IMAGE_EXIST -gt 0 ]; then
+            CONDITIONAL_SERVER_IMAGE_TAG="--set server.image.tag=latest"
+            CONDITIONAL_CLUSTER_AGENT_IMAGE_TAG="--set clusterAgent.image.tag=latest --set webhook.podAgentContainerImage.tag=latest --set nodeAgent.image.tag=latest"
+          fi
+
+          set -e
+
+          helm install tarian-server ./charts/tarian-server -n tarian-system --set server.service.type=NodePort --set server.service.nodePort=31051 $CONDITIONAL_SERVER_IMAGE_TAG
+          helm install tarian-cluster-agent ./charts/tarian-cluster-agent/ -n tarian-system \
+            --set clusterAgent.service.type=NodePort \
+            --set clusterAgent.service.nodePort=31052 \
+            $CONDITIONAL_CLUSTER_AGENT_IMAGE_TAG \
+            --set clusterAgent.enableAddConstraint=true \
+            --set nodeAgent.hostProcDir=/host/proc
+
+      - name: Wait for pods ready
+        run: |
+          kubectl wait --for=condition=ready pod --all --all-namespaces --timeout=2m || true
+          kubectl wait --for=condition=ready pod --all --all-namespaces --timeout=2m || true
+          kubectl wait --for=condition=ready pod --all --all-namespaces --timeout=2m || true
+          kubectl get pods --all-namespaces
+          kubectl get deployment --all-namespaces
+          kubectl get daemonset --all-namespaces
+          kubectl get service --all-namespaces -o wide
+          sleep 5s
+
+      # pull tarianctl for k8s-test
+      - run: mkdir -p ./bin
+      - run: docker cp $(docker create --name tmp-tarianctl ghcr.io/kube-tarian/tarianctl:latest):/tarianctl ./bin/tarianctl
+
+      - name: Run k8s test
+        run: ./test/k8s/test.sh
+
+  release:
+    if: startsWith(github.ref, 'refs/heads/first-release')
+    needs: lint-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GOPATH: ${{ github.workspace }}/../go
+      HOME: ${{ github.workspace }}/..
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # @3.1.0
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@5119fcb9089d432beecbf79bb2c7915207344b78 # @v3.5
+        with:
+          version: '3.11.0'
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@c25b74a986eb925b398320414b576227f375f946 # @v1.2.1
+        with:
+          config: .cr.yaml
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

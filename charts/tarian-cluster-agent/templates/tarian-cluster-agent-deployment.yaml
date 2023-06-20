@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: tarian-cluster-agent
+        image: "{{ .Values.clusterAgent.image.name }}:{{ .Values.clusterAgent.image.tag | default .Chart.AppVersion }}"
+        args:
+        - "--log-encoding={{ .Values.clusterAgent.log.encoding }}"
+        - "--log-level={{ .Values.clusterAgent.log.level }}"
+        - run
+        - "--server-address={{ .Values.clusterAgent.serverAddress}}"
+{{- if .Values.clusterAgent.enableAddConstraint }}
+        - --enable-add-constraint
+{{- end }}
+        ports:
+        - containerPort: 50052
+          name: grpc
+        - containerPort: 8088
+          name: falco
+      serviceAccountName: {{ .Release.Name }}

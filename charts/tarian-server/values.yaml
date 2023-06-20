@@ -1,0 +1,21 @@
+server:
+  log:
+    encoding: json
+    level: info
+  image:
+    name: ghcr.io/kube-tarian/tarian-server
+    # empty = default to app version
+    tag:
+  alert:
+    alertManagerAddress: http://alertmanager:9093
+    evaluationInterval: 5s
+  dgraph:
+    address: dgraph-public:9080
+  service:
+    type: ClusterIP
+    nodeport:
+  replicas: 1
+  tlsSecretName:
+
+alertManager:
+  install: true

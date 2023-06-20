@@ -1,0 +1,34 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
+    endpoint = ["http://kind-registry:5000"]
+nodes:
+- role: control-plane
+  extraMounts:
+  - hostPath: /var/run/docker.sock
+    containerPath: /var/run/docker.sock
+  - hostPath: /proc
+    containerPath: /host/proc
+  extraPortMappings:
+
+  # tarian-server
+  - containerPort: 31051
+    hostPort: 31051
+    protocol: TCP
+
+  # tarian-cluster-agent
+  - containerPort: 31052
+    hostPort: 31052
+    protocol: TCP
+
+  # dgraph
+  - containerPort: 31880
+    hostPort: 31880
+    protocol: TCP
+
+  # phppgadmin
+  - containerPort: 31433
+    hostPort: 31433
+    protocol: TCP
