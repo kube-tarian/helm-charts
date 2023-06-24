@@ -1,0 +1,77 @@
+apiVersion: v1
+entries:
+  tarian-cluster-agent:
+  - apiVersion: v1
+    appVersion: 0.0.13
+    created: "2023-06-24T08:51:45.94394911Z"
+    description: Anti-Virus for K8s. Protect your Applications running on Kubernetes
+      from malicious attacks with pre-registered source code, runtime processes monitoring,
+      analytics, alerting and also sharing detections with community. Maybe save from
+      Ransomware.
+    digest: ce24f13f397a7264fd970e3be251ef85e2d8723d9833020b2ff8ef6b07896f3f
+    home: https://github.com/kube-tarian/tarian
+    keywords:
+    - security
+    - microservices
+    - containers
+    - anti-virus
+    - antivirus
+    - anti-viruses
+    - cloud-native
+    - cloudnative
+    - security-hardening
+    - pods
+    - security-tools
+    - devsecops
+    - runtime-security
+    - kubernetes
+    - tarian
+    - antivirus-software
+    - kube-tarian
+    maintainers:
+    - name: devopstoday11
+    - name: andylibrian
+    name: tarian-cluster-agent
+    sources:
+    - https://github.com/kube-tarian/tarian
+    urls:
+    - https://github.com/kube-tarian/helm-charts/releases/download/chart-tarian-cluster-agent-0.0.13/tarian-cluster-agent-0.0.13.tgz
+    version: 0.0.13
+  tarian-server:
+  - apiVersion: v1
+    appVersion: 0.0.13
+    created: "2023-06-24T08:51:46.092095933Z"
+    description: Anti-Virus for K8s. Protect your Applications running on Kubernetes
+      from malicious attacks with pre-registered source code, runtime processes monitoring,
+      analytics, alerting and also sharing detections with community. Maybe save from
+      Ransomware.
+    digest: e8240e21130cf52c2babdeaaf63997b83ff8314349c95f7fced649d5defd16b3
+    home: https://github.com/kube-tarian/tarian
+    keywords:
+    - security
+    - microservices
+    - containers
+    - anti-virus
+    - antivirus
+    - anti-viruses
+    - cloud-native
+    - cloudnative
+    - security-hardening
+    - pods
+    - security-tools
+    - devsecops
+    - runtime-security
+    - kubernetes
+    - tarian
+    - antivirus-software
+    - kube-tarian
+    maintainers:
+    - name: devopstoday11
+    - name: andylibrian
+    name: tarian-server
+    sources:
+    - https://github.com/kube-tarian/tarian
+    urls:
+    - https://github.com/kube-tarian/helm-charts/releases/download/chart-tarian-server-0.0.13/tarian-server-0.0.13.tgz
+    version: 0.0.13
+generated: "2023-06-24T08:51:46.092100333Z"
